@@ -84,6 +84,11 @@ and `Restart=on-failure`.
   monitoring-stack internals (except `up`), inactive systemd states and per-thread stats, which keeps about 3.7k series
   (the free tier allows 10k). Scrapes run every 60s, which is 1 sample/min per series.
   Check delivery: `curl -s 127.0.0.1:9090/metrics | grep -E 'remote_storage_samples_(total|failed_total)'`.
+- **Alloy** (`alloy/config.alloy`, `127.0.0.1:12345`, about 50 MB) only sends its own self-check metrics
+  (`job="integrations/alloy-check"`), which is what the Cloud onboarding "Test connection" button looks for. It ships no logs.
+  Its token is in `/etc/alloy/grafana-cloud.token` (alloy 600).
+- node_exporter series arrive in Cloud as `job="integrations/node_exporter", instance="ampere-m1"`, so Cloud's built-in
+  Linux integration dashboards work. Locally they keep `job="node"`.
 - **Dashboards:** in Grafana Cloud, go to Dashboards → New → Import → upload each file in `grafana/dashboards/`, then pick the
   `grafanacloud-*-prom` data source. "ampere-m1 services" is the per-service overview.
 - **Rotating the token:** write the new one to the token file (`sudo install -m600 -o prometheus -g prometheus`), then run

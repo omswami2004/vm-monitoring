@@ -33,6 +33,12 @@ put textfile/vm-textfile-metrics.sh     /usr/local/bin/vm-textfile-metrics      
 [[ -e /etc/wa-relay/env ]] || install -m 600 -o wa-relay -g wa-relay wa-relay/env.sample /etc/wa-relay/env
 
 for f in systemd/*.service systemd/*.timer; do put "$f" "/etc/systemd/system/$(basename "$f")" 644; done
+# Alloy (self-check metrics for Grafana Cloud). Token file is created by hand, see README.
+if id alloy &>/dev/null; then
+  put alloy/config.alloy /etc/alloy/config.alloy 640 root:alloy
+  put systemd/alloy.service.d/override.conf /etc/systemd/system/alloy.service.d/override.conf 644
+fi
+
 systemctl daemon-reload
 /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
 /usr/local/bin/amtool check-config /etc/alertmanager/alertmanager.yml

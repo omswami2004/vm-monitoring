@@ -31,6 +31,15 @@ remote_write:
       - source_labels: [__name__]
         regex: "namedprocess_namegroup_thread_.*|node_(scrape_collector_.*|cpu_guest_seconds_total|softnet_.*|arp_entries|nfs_.*|udp_queues|cooling_device_.*|power_supply_.*|thermal_zone_temp)"
         action: drop
+      # Grafana Cloud's Linux integration dashboards expect these labels for node_exporter data.
+      - source_labels: [job]
+        regex: node
+        target_label: instance
+        replacement: ampere-m1
+      - source_labels: [job]
+        regex: node
+        target_label: job
+        replacement: integrations/node_exporter
 
 rule_files:
   - /etc/prometheus/rules/*.yml
