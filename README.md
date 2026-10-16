@@ -184,7 +184,7 @@ These are created through the API with a service account token (`~/.config/grafa
 - dashboards: "Services by host" (pick the host with the filter at the top), Node Exporter Full, NGINX, Named processes, Blackbox.
 
 ```sh
-WA_CLOUD_TOKEN="$(sudo sed -n 's/^CLOUD_TOKEN=//p' /etc/wa-relay/env)" python3 -I grafana-cloud/provision.py
+ALERT_EMAIL=you@example.com WA_CLOUD_TOKEN="$(sudo sed -n 's/^CLOUD_TOKEN=//p' /etc/wa-relay/env)" python3 -I grafana-cloud/provision.py
 ```
 
 ### Adding another machine

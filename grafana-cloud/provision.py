@@ -83,12 +83,30 @@ else:
     must(api("POST", "/api/v1/provisioning/contact-points", cp,
              extra_headers={"X-Disable-Provenance": "true"}), "contact point whatsapp")
 
-# ---- notification policy: notify=whatsapp → whatsapp; everything else → the default (email) ----
+# ---- contact point: email, for alerts that must not depend on ampere-m1 (its heartbeat) ----
+# Must be the email of a member of the Grafana Cloud org (Cloud refuses other addresses).
+ALERT_EMAIL = os.environ.get("ALERT_EMAIL", "")
+ecp = {"uid": "email-owner", "name": "email", "type": "email",
+       "settings": {"addresses": ALERT_EMAIL, "singleEmail": True}, "disableResolveMessage": False}
+existing = api("GET", "/api/v1/provisioning/contact-points")[1] or []
+if not ALERT_EMAIL:
+    print("skip contact point email (set ALERT_EMAIL to a Grafana org member's address)")
+elif any(c.get("uid") == "email-owner" for c in existing):
+    must(api("PUT", "/api/v1/provisioning/contact-points/email-owner", ecp,
+             extra_headers={"X-Disable-Provenance": "true"}), "contact point email (updated)")
+else:
+    must(api("POST", "/api/v1/provisioning/contact-points", ecp,
+             extra_headers={"X-Disable-Provenance": "true"}), "contact point email")
+
+# ---- notification policy: notify=whatsapp → whatsapp, notify=email → email ----
 policy = must(api("GET", "/api/v1/provisioning/policies"), "read policy")
-routes = [r for r in (policy.get("routes") or []) if r.get("receiver") != "whatsapp"]
+routes = [r for r in (policy.get("routes") or []) if r.get("receiver") not in ("whatsapp", "email")]
 routes.insert(0, {"receiver": "whatsapp", "object_matchers": [["notify", "=", "whatsapp"]],
                   "group_by": ["alertname", "host", "instance"],
                   "group_wait": "30s", "group_interval": "5m", "repeat_interval": "4h"})
+if any(c.get("uid") == "email-owner" for c in api("GET", "/api/v1/provisioning/contact-points")[1] or []):
+  routes.insert(1, {"receiver": "email", "object_matchers": [["notify", "=", "email"]],
+                  "group_by": ["alertname"], "group_wait": "30s", "group_interval": "5m", "repeat_interval": "12h"})
 policy["routes"] = routes
 must(api("PUT", "/api/v1/provisioning/policies", policy, extra_headers={"X-Disable-Provenance": "true"}),
      f"notification policy (default receiver stays '{policy.get('receiver')}')")
