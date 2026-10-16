@@ -1,0 +1,14 @@
+route:
+  receiver: whatsapp
+  group_by: [alertname, instance, name, unit, vhost]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: whatsapp
+    webhook_configs:
+      - url: http://127.0.0.1:9097/alert
+        send_resolved: true
+        max_alerts: 20
+

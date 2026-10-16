@@ -1,0 +1,34 @@
+[Unit]
+Description=Prometheus process-exporter
+Documentation=https://github.com/omswami2004/vm-monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=process_exporter
+Group=process_exporter
+ExecStart=/usr/local/bin/process-exporter -web.listen-address=127.0.0.1:9256 -config.path=/etc/process-exporter/config.yml
+
+Restart=on-failure
+RestartSec=5
+MemoryMax=128M
+# Read other users' /proc/<pid>/{io,fd} for per-service stats.
+AmbientCapabilities=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+CapabilityBoundingSet=CAP_SYS_PTRACE CAP_DAC_READ_SEARCH
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+# Group processes by the service they belong to (first match wins).
+process_names:
+  - name: sattle
+    cmdline: ['/home/ubuntu/sattle/']
+  - name: screen-streamer
+    cmdline: ['screen-streamer/server\.js']
+  - name: jarvis-bridge
+    cmdline: ['bridge/server\.mjs']
+  - name: private-cdn
+    exe: [/usr/local/bin/private-cdn]
+  - name: review-agent
+    # cmdline regexes are ANDed, so alternatives go in one regex.
+    cmdline: ['review-agent\.sh|(^|/)agy( |$)']
+  - name: moshi-hook
+    cmdline: ['moshi-hook']
+  - name: nginx
+    comm: [nginx]
+  - name: grafana
+    comm: [grafana, grafana-server]
+  - name: monitoring
+    comm: [prometheus, alertmanager, node_exporter, blackbox_export, nginx-prometheu, process-exporte, prometheus-ngin, wa-relay]
+  - name: oracle-cloud-agent
+    cmdline: ['/snap/oracle-cloud-agent/']
+  - name: claude
+    comm: [claude]
+  - name: "{{.Comm}}"
+    cmdline: ['.+']

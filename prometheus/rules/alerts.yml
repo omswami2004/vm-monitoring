@@ -1,0 +1,75 @@
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up{job!~"blackbox.*"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Scrape target {{ $labels.job }} ({{ $labels.instance }}) is down"
+      - alert: ProbeFailing
+        expr: probe_success == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "Probe failing: {{ $labels.instance }}"
+          description: "HTTP status {{ with printf `probe_http_status_code{instance='%s'}` $labels.instance | query }}{{ . | first | value }}{{ end }}"
+      - alert: SystemdUnitFailed
+        expr: node_systemd_unit_state{state="failed"} == 1
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: "systemd unit {{ $labels.name }} is in failed state"
+      - alert: UserUnitNotActive
+        expr: user_unit_active == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "User unit {{ $labels.unit }} ({{ $labels.user }}) is not active"
+      - alert: ServiceRestartingRepeatedly
+        expr: increase(node_systemd_service_restart_total[15m]) > 3 or increase(user_unit_restarts_total[15m]) > 3
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.name }}{{ $labels.unit }} restarted {{ $value | humanize }} times in 15m"
+
+  - name: resources
+    rules:
+      - alert: DiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs|squashfs|efivarfs|vfat"} / node_filesystem_size_bytes) > 0.85
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Disk {{ $labels.mountpoint }} is {{ $value | humanizePercentage }} full"
+      - alert: MemoryHigh
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.90
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "RAM usage is {{ $value | humanizePercentage }}"
+
+  - name: tls
+    rules:
+      - alert: TLSCertExpiringSoon
+        expr: (probe_ssl_earliest_cert_expiry - time()) < 14 * 86400
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "TLS cert served for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}"
+      - alert: OriginCertExpiringSoon
+        expr: (ssl_cert_file_not_after_seconds - time()) < 14 * 86400
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Let's Encrypt cert {{ $labels.cert }} on the VM expires in {{ $value | humanizeDuration }}"
+
+  - name: nginx
+    rules:
+      - alert: Nginx5xxRateHigh
+        expr: |
+          sum by (vhost) (rate(nginx_http_response_count_total{status=~"5.."}[5m]))
+            / sum by (vhost) (rate(nginx_http_response_count_total[5m])) > 0.05
+          and sum by (vhost) (rate(nginx_http_response_count_total{status=~"5.."}[5m])) * 300 > 5
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "{{ $labels.vhost }}: {{ $value | humanizePercentage }} of responses are 5xx"

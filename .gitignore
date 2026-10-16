@@ -1,0 +1,7 @@
+# Secrets never live here; real values are only on the VM.
+*.env
+env
+!wa-relay/env.sample
+wa-relay/wa-relay
+*.bak.*
+*.tmp

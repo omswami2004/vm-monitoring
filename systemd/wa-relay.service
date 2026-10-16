@@ -1,0 +1,32 @@
+[Unit]
+Description=Alertmanager to WhatsApp relay
+Documentation=https://github.com/omswami2004/vm-monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=wa-relay
+Group=wa-relay
+ExecStart=/usr/local/bin/wa-relay
+
+Restart=on-failure
+RestartSec=5
+MemoryMax=32M
+EnvironmentFile=-/etc/wa-relay/env
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,100 @@
+# Prometheus config for ampere-m1. Deployed to /etc/prometheus/prometheus.yml.
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  external_labels:
+    instance_host: ampere-m1
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["127.0.0.1:9093"]
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs: [{ targets: ["127.0.0.1:9090"] }]
+
+  - job_name: alertmanager
+    static_configs: [{ targets: ["127.0.0.1:9093"] }]
+
+  - job_name: node
+    static_configs: [{ targets: ["127.0.0.1:9100"] }]
+
+  - job_name: process
+    static_configs: [{ targets: ["127.0.0.1:9256"] }]
+
+  - job_name: nginx
+    static_configs: [{ targets: ["127.0.0.1:9113"] }]
+
+  - job_name: nginxlog
+    static_configs: [{ targets: ["127.0.0.1:4040"] }]
+
+  - job_name: blackbox
+    static_configs: [{ targets: ["127.0.0.1:9115"] }]
+
+  - job_name: grafana
+    static_configs: [{ targets: ["127.0.0.1:3300"] }]
+
+  - job_name: wa-relay
+    static_configs: [{ targets: ["127.0.0.1:9097"] }]
+
+  # Public sites as users see them (through Cloudflare where proxied).
+  # 2xx/3xx/401 = up (redirects to login and basic-auth prompts count as up).
+  - job_name: blackbox-public
+    scrape_interval: 60s
+    metrics_path: /probe
+    params: { module: [http_public] }
+    static_configs:
+      - targets:
+          - https://sattle.axiosiiitl.dev/
+          - https://battle.axiosiiitl.dev/health
+          - https://g1.axiosiiitl.dev/
+          - https://g2.axiosiiitl.dev/
+          - https://cdn.axiosiiitl.dev/
+          - https://index.axiosiiitl.dev/
+          - https://fetch.axiosiiitl.dev/
+          - https://auth.axiosiiitl.dev/
+          - https://stat.axiosiiitl.dev/api/health
+    relabel_configs: &blackbox_relabel
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  # Backends directly on loopback (tells "app down" apart from "nginx/Cloudflare down").
+  - job_name: blackbox-local
+    scrape_interval: 60s
+    metrics_path: /probe
+    params: { module: [http_2xx] }
+    static_configs:
+      - targets: ["http://127.0.0.1:3100/health"]
+        labels: { service: sattle }
+      - targets: ["http://127.0.0.1:8787/health"]
+        labels: { service: jarvis-bridge }
+      - targets: ["http://127.0.0.1:8090/healthz"]
+        labels: { service: private-cdn }
+      - targets: ["http://127.0.0.1:8000/api/server"]
+        labels: { service: screen-streamer }
+    relabel_configs: *blackbox_relabel
+
+  - job_name: blackbox-tcp
+    scrape_interval: 60s
+    metrics_path: /probe
+    params: { module: [tcp_connect] }
+    static_configs:
+      - targets: ["127.0.0.1:3000"]
+        labels: { service: screen-streamer-rtmp }
+    relabel_configs: *blackbox_relabel
+
+  # App-level metrics: enable once the PRs are merged and deployed with METRICS_ADDR set
+  # (sattle: gandhiyaash/sattle#78, private-cdn: MrImmortal09/private-cdn#2).
+  # Uncomment in /etc/prometheus/prometheus.yml, then `sudo systemctl reload prometheus`.
+  # - job_name: sattle
+  #   static_configs: [{ targets: ["127.0.0.1:9464"] }]
+  # - job_name: private-cdn
+  #   static_configs: [{ targets: ["127.0.0.1:9466"] }]

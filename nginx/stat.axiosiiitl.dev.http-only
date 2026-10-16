@@ -1,0 +1,12 @@
+server {
+    listen 80;
+    listen [::]:80;
+    server_name stat.axiosiiitl.dev;
+    server_tokens off;
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    location / {
+        return 301 https://stat.axiosiiitl.dev$request_uri;
+    }
+}

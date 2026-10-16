@@ -1,0 +1,32 @@
+[Unit]
+Description=Prometheus blackbox_exporter
+Documentation=https://github.com/omswami2004/vm-monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=blackbox_exporter
+Group=blackbox_exporter
+ExecStart=/usr/local/bin/blackbox_exporter --config.file=/etc/blackbox_exporter/blackbox.yml --web.listen-address=127.0.0.1:9115
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+MemoryMax=128M
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+
+[Install]
+WantedBy=multi-user.target

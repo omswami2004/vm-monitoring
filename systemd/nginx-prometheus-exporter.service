@@ -1,0 +1,32 @@
+[Unit]
+Description=nginx stub_status exporter
+Documentation=https://github.com/omswami2004/vm-monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=nginx_exporter
+Group=nginx_exporter
+ExecStart=/usr/local/bin/nginx-prometheus-exporter --nginx.scrape-uri=http://127.0.0.1:8081/stub_status --web.listen-address=127.0.0.1:9113
+
+Restart=on-failure
+RestartSec=5
+MemoryMax=64M
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+
+[Install]
+WantedBy=multi-user.target

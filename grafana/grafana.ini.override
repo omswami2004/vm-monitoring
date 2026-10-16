@@ -1,0 +1,46 @@
+# Deployed as /etc/grafana/grafana.ini (package default backed up as grafana.ini.bak.<ts>).
+# Secrets are NOT here: they are read from root:grafana 640 files via $__file{}.
+[server]
+http_addr = 127.0.0.1
+# 3000 is taken by screen-streamer's RTMP ingest
+http_port = 3300
+domain = stat.axiosiiitl.dev
+root_url = https://stat.axiosiiitl.dev/
+enforce_domain = false
+
+[security]
+admin_user = admin
+admin_password = $__file{/etc/grafana/admin_password}
+secret_key = $__file{/etc/grafana/secret_key}
+cookie_secure = true
+cookie_samesite = lax
+disable_gravatar = true
+disable_initial_admin_creation = false
+
+[users]
+allow_sign_up = false
+allow_org_create = false
+
+[auth]
+disable_login_form = false
+
+[auth.anonymous]
+enabled = false
+
+[auth.basic]
+enabled = true
+
+[analytics]
+reporting_enabled = false
+check_for_updates = false
+check_for_plugin_updates = false
+
+[news]
+news_feed_enabled = false
+
+[snapshots]
+external_enabled = false
+
+[metrics]
+# /metrics is on 127.0.0.1:3300 only, scraped by Prometheus
+enabled = true

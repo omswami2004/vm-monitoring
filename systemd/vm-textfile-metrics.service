@@ -1,0 +1,12 @@
+[Unit]
+Description=Write node_exporter textfile metrics (user units, review-agent, origin certs)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/vm-textfile-metrics
+MemoryMax=64M
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+ReadWritePaths=/var/lib/node_exporter/textfile
