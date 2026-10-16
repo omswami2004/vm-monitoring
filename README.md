@@ -1,7 +1,9 @@
 # vm-monitoring
 
 Prometheus + Grafana + Alertmanager for **ampere-m1** (Ubuntu 26.04, ARM64, Oracle Cloud), installed as
-native binaries under systemd. There's no Docker. Grafana is at **https://stat.axiosiiitl.dev**, and alerts go to **WhatsApp**.
+native binaries under systemd. There's no Docker. Dashboards are in **Grafana Cloud** (stack in ap-south-1), with metrics pushed by Prometheus
+`remote_write`, and alerts go to **WhatsApp** from the local Alertmanager, so they don't depend on Grafana.
+There is no local Grafana; it was removed to save about 480 MB of RAM.
 
 A copy of this file is installed at `/etc/prometheus/README.md`.
 
@@ -16,7 +18,7 @@ A copy of this file is installed at `/etc/prometheus/README.md`.
 | Per-service CPU/RAM/FDs (sattle, jarvis-bridge, screen-streamer, private-cdn, review-agent, nginx, …) | process-exporter `127.0.0.1:9256`, groups in `process-exporter/config.yml` | "Named processes", services row |
 | nginx connections | stub_status on `127.0.0.1:8081` → nginx-prometheus-exporter `127.0.0.1:9113` | "NGINX exporter" |
 | Per-site requests / status codes / latency | extra access log `/var/log/nginx/monitoring.log` (has `$host`, `$request_time`) → prometheus-nginxlog-exporter `127.0.0.1:4040` | Traffic row |
-| Public sites (sattle, battle, g1, g2, cdn, index, fetch, auth, stat) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
+| Public sites (sattle, battle, g1, g2, cdn, index, fetch, auth) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
 | Backends on loopback (3100/health, 8787/health, 8090/healthz, 8000/api/server, RTMP 3000) | blackbox (http / tcp) | Status → Backends |
 | TLS: edge cert (Cloudflare) | blackbox `probe_ssl_earliest_cert_expiry` | Cert days left |
 | TLS: origin Let's Encrypt certs on disk | textfile `ssl_cert_file_not_after_seconds` | Cert days left |
@@ -27,8 +29,8 @@ The sites behind Cloudflare (all except g2) are probed through Cloudflare, so a 
 
 ### Ports (all 127.0.0.1)
 `9090` Prometheus, `9093` Alertmanager (cluster port disabled), `9100` node, `9113` nginx, `9115` blackbox,
-`9256` process, `4040` nginxlog, `9097` wa-relay, `3300` Grafana (3000 is screen-streamer's RTMP),
-`8081` nginx stub_status. Only Grafana is reachable from outside, through nginx and Grafana's login.
+`9256` process, `4040` nginxlog, `9097` wa-relay, `8081` nginx stub_status. Nothing is reachable from outside;
+data only leaves the VM as an outbound push to Grafana Cloud.
 
 ## Alerts → WhatsApp
 
@@ -66,16 +68,26 @@ You can also use the Alertmanager datasource in Grafana (Alerting → Silences).
 | What | Where |
 |---|---|
 | Binaries | `/usr/local/bin/{prometheus,promtool,alertmanager,amtool,node_exporter,blackbox_exporter,nginx-prometheus-exporter,process-exporter,prometheus-nginxlog-exporter,wa-relay,vm-textfile-metrics}` |
-| Configs | `/etc/prometheus/`, `/etc/alertmanager/`, `/etc/blackbox_exporter/`, `/etc/process-exporter/`, `/etc/prometheus-nginxlog-exporter/`, `/etc/wa-relay/env`, `/etc/grafana/` |
-| Data | `/var/lib/prometheus` (30d, capped at 10GB), `/var/lib/alertmanager`, `/var/lib/grafana`, `/var/lib/node_exporter/textfile` |
-| Units | `/etc/systemd/system/*.service` from `systemd/`, plus the Grafana drop-in `grafana-server.service.d/override.conf` |
-| nginx | `/etc/nginx/conf.d/monitoring.conf` (log_format + stub_status), `/etc/nginx/sites-available/stat` (Grafana vhost) |
-| Secrets (not in git) | `/etc/grafana/admin_password`, `/etc/grafana/secret_key` (root:grafana 640), `/etc/wa-relay/env` (600) |
+| Configs | `/etc/prometheus/`, `/etc/alertmanager/`, `/etc/blackbox_exporter/`, `/etc/process-exporter/`, `/etc/prometheus-nginxlog-exporter/`, `/etc/wa-relay/env` |
+| Data | `/var/lib/prometheus` (30d local, capped at 10GB), `/var/lib/alertmanager`, `/var/lib/node_exporter/textfile` |
+| Units | `/etc/systemd/system/*.service` from `systemd/` |
+| nginx | `/etc/nginx/conf.d/monitoring.conf` (log_format + stub_status) |
+| Secrets (not in git) | `/etc/prometheus/grafana-cloud.token` (prometheus 600), `/etc/wa-relay/env` (wa-relay 600) |
 
 Every unit runs as its own system user with `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome`, `MemoryMax`,
 and `Restart=on-failure`.
 
-Grafana login: user `admin`, password in `/etc/grafana/admin_password` (`sudo cat` it). Sign-up and anonymous access are disabled.
+## Grafana Cloud
+
+- **Metrics:** the `remote_write` block in `prometheus/prometheus.yml` sends to `prometheus-prod-43-prod-ap-south-1.grafana.net` as user
+  `3680297`, with the token read from `/etc/prometheus/grafana-cloud.token`. `write_relabel_configs` drop Go runtime stats,
+  monitoring-stack internals (except `up`), inactive systemd states and per-thread stats, which keeps about 3.7k series
+  (the free tier allows 10k). Scrapes run every 60s, which is 1 sample/min per series.
+  Check delivery: `curl -s 127.0.0.1:9090/metrics | grep -E 'remote_storage_samples_(total|failed_total)'`.
+- **Dashboards:** in Grafana Cloud, go to Dashboards → New → Import → upload each file in `grafana/dashboards/`, then pick the
+  `grafanacloud-*-prom` data source. "ampere-m1 services" is the per-service overview.
+- **Rotating the token:** write the new one to the token file (`sudo install -m600 -o prometheus -g prometheus`), then run
+  `sudo systemctl reload prometheus`.
 
 ## Deploying changes from this repo
 
@@ -84,7 +96,7 @@ sudo ./scripts/deploy.sh                # copies configs/units, backs up anythin
 sudo systemctl reload prometheus        # rules / scrape config
 sudo systemctl reload alertmanager
 sudo systemctl restart <exporter>       # exporter config changes
-python3 -I grafana/build-overview.py   # after editing the services dashboard, then deploy
+python3 -I grafana/build-overview.py   # after editing the services dashboard, then re-import it in Grafana Cloud
 ```
 
 nginx changes: `sudo nginx -t && sudo systemctl reload nginx` (reload, never restart).
@@ -102,7 +114,8 @@ nginx changes: `sudo nginx -t && sudo systemctl reload nginx` (reload, never res
    and add the name to `APP_GROUPS` in `grafana/build-overview.py`.
 3. **Public site.** Add its URL to `blackbox-public` and its hostname to the `whitelist` in `nginxlog-exporter/config.hcl`.
 4. **systemd state** is automatic. For user units, add them to `USER_UNITS` in `textfile/vm-textfile-metrics.sh`.
-5. **Dashboard.** Drop a JSON in `grafana/dashboards/` (or add the ID to `scripts/fetch-dashboards.sh`), then deploy.
+5. **Dashboard.** Import one into Grafana Cloud. Keep the JSON in `grafana/dashboards/` (or add its ID to `scripts/fetch-dashboards.sh`).
+   Its series count against the 10k quota, so check `prometheus_remote_storage_samples_total` and drop noisy metrics in `write_relabel_configs`.
 6. Run `sudo ./scripts/deploy.sh && sudo systemctl reload prometheus`, and check that `curl -s 127.0.0.1:9090/api/v1/targets` shows it up.
 
 ## Updating binaries
@@ -115,10 +128,8 @@ sudo ./scripts/fetch-binaries.sh prometheus     # or omit the name to do all
 sudo systemctl restart prometheus && systemctl is-active prometheus
 ```
 
-Restart one at a time and check `systemctl status` after each. Grafana comes from Grafana's apt repo
-(`/etc/apt/sources.list.d/grafana.list`), so `sudo apt-get install --only-upgrade grafana` updates it. wa-relay:
+Restart one at a time and check `systemctl status` after each. wa-relay:
 `cd wa-relay && CGO_ENABLED=0 go build -trimpath -ldflags='-s -w' -o wa-relay . && sudo install -m755 wa-relay /usr/local/bin/ && sudo systemctl restart wa-relay`.
 
 Versions at install time (2026-10-16): Prometheus 3.15.0, Alertmanager 0.34.1, node_exporter 1.12.1,
-blackbox_exporter 0.29.0, nginx-prometheus-exporter 1.5.3, process-exporter 0.8.7, prometheus-nginxlog-exporter 1.11.0,
-Grafana 13.2.3 (apt). Upstream releases were used because Ubuntu 26.04 ships Prometheus 2.53 and older exporters.
+blackbox_exporter 0.29.0, nginx-prometheus-exporter 1.5.3, process-exporter 0.8.7, prometheus-nginxlog-exporter 1.11.0. Upstream releases were used because Ubuntu 26.04 ships Prometheus 2.53 and older exporters.

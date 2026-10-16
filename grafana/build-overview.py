@@ -6,9 +6,9 @@ Edit SERVICES / panels here, run `python3 -I grafana/build-overview.py`, then de
 import json
 import pathlib
 
-DS = {"type": "prometheus", "uid": "prometheus"}
-SYSTEM_UNITS = "sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|grafana-server|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
-APP_GROUPS = "sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|grafana|monitoring"
+DS = {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}
+SYSTEM_UNITS = "sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
+APP_GROUPS = "sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring"
 
 panels = []
 _id = 0
@@ -161,6 +161,9 @@ dash = {
     "time": {"from": "now-6h", "to": "now"}, "editable": False, "panels": panels,
     "links": [{"title": "Node Exporter Full", "type": "link", "url": "/dashboards?query=Node%20Exporter"}],
 }
+# Import-ready: Grafana's import screen asks which Prometheus data source to use.
+dash = {"__inputs": [{"name": "DS_PROMETHEUS", "label": "Prometheus", "type": "datasource",
+                      "pluginId": "prometheus", "pluginName": "Prometheus"}], **dash}
 out = pathlib.Path(__file__).parent / "dashboards" / "vm-services-overview.json"
 out.write_text(json.dumps(dash, indent=1) + "\n")
 print(f"wrote {out} ({len(panels)} panels)")

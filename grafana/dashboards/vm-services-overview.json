@@ -1,4 +1,13 @@
 {
+ "__inputs": [
+  {
+   "name": "DS_PROMETHEUS",
+   "label": "Prometheus",
+   "type": "datasource",
+   "pluginId": "prometheus",
+   "pluginName": "Prometheus"
+  }
+ ],
  "uid": "ampere-services",
  "title": "ampere-m1 services",
  "tags": [
@@ -32,7 +41,7 @@
    "id": 2,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 7,
@@ -44,10 +53,10 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "max by (name) (node_systemd_unit_state{state=\"active\",name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|grafana-server|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"})",
+     "expr": "max by (name) (node_systemd_unit_state{state=\"active\",name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"})",
      "legendFormat": "{{name}}",
      "instant": true
     }
@@ -106,7 +115,7 @@
    "id": 3,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 7,
@@ -118,7 +127,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "user_unit_active",
@@ -180,7 +189,7 @@
    "id": 4,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 7,
@@ -192,7 +201,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "count(node_systemd_unit_state{state=\"failed\"} == 1) or vector(0)",
@@ -238,7 +247,7 @@
    "id": 5,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 7,
@@ -250,7 +259,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "count(ALERTS{alertstate=\"firing\"}) or vector(0)",
@@ -296,7 +305,7 @@
    "id": 6,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -308,7 +317,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "probe_success{job=\"blackbox-public\"}",
@@ -370,7 +379,7 @@
    "id": 7,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -382,7 +391,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "probe_success{job=~\"blackbox-local|blackbox-tcp\"}",
@@ -444,7 +453,7 @@
    "id": 8,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -456,7 +465,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "(ssl_cert_file_not_after_seconds - time()) / 86400",
@@ -466,7 +475,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "B",
      "expr": "min by (instance) (probe_ssl_earliest_cert_expiry{job=\"blackbox-public\"} - time()) / 86400",
@@ -531,7 +540,7 @@
    "id": 10,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -543,7 +552,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "sum by (vhost) (rate(nginx_http_response_count_total[5m]))",
@@ -585,7 +594,7 @@
    "id": 11,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -597,7 +606,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "sum by (vhost) (rate(nginx_http_response_count_total{status=~\"5..\"}[5m]))",
@@ -639,7 +648,7 @@
    "id": 12,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -651,7 +660,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "histogram_quantile(0.95, sum by (vhost, le) (rate(nginx_http_response_time_seconds_hist_bucket[5m])))",
@@ -693,7 +702,7 @@
    "id": 13,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -705,7 +714,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "sum by (class) (label_replace(rate(nginx_http_response_count_total[5m]), \"class\", \"${1}xx\", \"status\", \"(.)..\"))",
@@ -747,7 +756,7 @@
    "id": 14,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -759,7 +768,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "nginx_connections_active",
@@ -768,7 +777,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "B",
      "expr": "nginx_connections_waiting",
@@ -777,7 +786,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "C",
      "expr": "rate(nginx_http_requests_total[5m])",
@@ -819,7 +828,7 @@
    "id": 15,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -831,7 +840,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "probe_duration_seconds",
@@ -885,7 +894,7 @@
    "id": 17,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -897,10 +906,10 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "sum by (groupname) (rate(namedprocess_namegroup_cpu_seconds_total{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|grafana|monitoring\"}[5m]))",
+     "expr": "sum by (groupname) (rate(namedprocess_namegroup_cpu_seconds_total{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}[5m]))",
      "legendFormat": "{{groupname}}"
     }
    ],
@@ -939,7 +948,7 @@
    "id": 18,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -951,10 +960,10 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "namedprocess_namegroup_memory_bytes{memtype=\"resident\",groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|grafana|monitoring\"}",
+     "expr": "namedprocess_namegroup_memory_bytes{memtype=\"resident\",groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
      "legendFormat": "{{groupname}}"
     }
    ],
@@ -993,7 +1002,7 @@
    "id": 19,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -1005,16 +1014,16 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "node_systemd_service_restart_total{name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|grafana-server|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"}",
+     "expr": "node_systemd_service_restart_total{name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"}",
      "legendFormat": "{{name}}"
     },
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "B",
      "expr": "user_unit_restarts_total",
@@ -1056,7 +1065,7 @@
    "id": 20,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -1068,10 +1077,10 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "namedprocess_namegroup_open_filedesc{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|grafana|monitoring\"}",
+     "expr": "namedprocess_namegroup_open_filedesc{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
      "legendFormat": "{{groupname}}"
     }
    ],
@@ -1122,7 +1131,7 @@
    "id": 22,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 6,
@@ -1134,7 +1143,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "increase(review_agent_responses_posted_total[24h])",
@@ -1172,7 +1181,7 @@
    "id": 23,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 6,
@@ -1184,7 +1193,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "review_agent_log_age_seconds",
@@ -1222,7 +1231,7 @@
    "id": 24,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 6,
@@ -1234,7 +1243,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "increase(review_agent_log_lines_total[1h])",
@@ -1243,7 +1252,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "B",
      "expr": "increase(review_agent_responses_posted_total[1h])",
@@ -1297,7 +1306,7 @@
    "id": 26,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -1309,7 +1318,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))",
@@ -1351,7 +1360,7 @@
    "id": 27,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -1363,7 +1372,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
@@ -1372,7 +1381,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "B",
      "expr": "node_memory_MemTotal_bytes",
@@ -1414,7 +1423,7 @@
    "id": 28,
    "datasource": {
     "type": "prometheus",
-    "uid": "prometheus"
+    "uid": "${DS_PROMETHEUS}"
    },
    "gridPos": {
     "h": 8,
@@ -1426,7 +1435,7 @@
     {
      "datasource": {
       "type": "prometheus",
-      "uid": "prometheus"
+      "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
      "expr": "1 - node_filesystem_avail_bytes{fstype=~\"ext4|xfs|btrfs\"} / node_filesystem_size_bytes",

@@ -15,10 +15,8 @@ process_names:
     cmdline: ['moshi-hook']
   - name: nginx
     comm: [nginx]
-  - name: grafana
-    comm: [grafana, grafana-server]
   - name: monitoring
-    comm: [prometheus, alertmanager, node_exporter, blackbox_export, nginx-prometheu, process-exporte, prometheus-ngin, wa-relay]
+    comm: [prometheus, alertmanager, node_exporter, blackbox_export, nginx-prometheu, process-exporte, prometheus-ngin, wa-relay, alloy]
   - name: oracle-cloud-agent
     cmdline: ['/snap/oracle-cloud-agent/']
   - name: claude

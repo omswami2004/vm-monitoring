@@ -33,15 +33,6 @@ put textfile/vm-textfile-metrics.sh     /usr/local/bin/vm-textfile-metrics      
 [[ -e /etc/wa-relay/env ]] || install -m 600 -o wa-relay -g wa-relay wa-relay/env.sample /etc/wa-relay/env
 
 for f in systemd/*.service systemd/*.timer; do put "$f" "/etc/systemd/system/$(basename "$f")" 644; done
-put systemd/grafana-server.service.d/override.conf /etc/systemd/system/grafana-server.service.d/override.conf 644
-
-# Grafana
-put grafana/grafana.ini.override /etc/grafana/grafana.ini 640 root:grafana
-put grafana/provisioning/datasources/prometheus.yml /etc/grafana/provisioning/datasources/prometheus.yml 640 root:grafana
-put grafana/provisioning/dashboards/vm.yml /etc/grafana/provisioning/dashboards/vm.yml 640 root:grafana
-install -d -o root -g grafana -m 750 /var/lib/grafana/dashboards
-for d in grafana/dashboards/*.json; do put "$d" "/var/lib/grafana/dashboards/$(basename "$d")" 640 root:grafana; done
-
 systemctl daemon-reload
 /usr/local/bin/promtool check config /etc/prometheus/prometheus.yml
 /usr/local/bin/amtool check-config /etc/alertmanager/alertmanager.yml
