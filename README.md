@@ -61,7 +61,7 @@ amtool --alertmanager.url=http://127.0.0.1:9093 alert add TestAlert severity=war
 ```
 
 To silence something: `amtool --alertmanager.url=http://127.0.0.1:9093 silence add alertname=X --duration=2h --comment=why`.
-You can also use the Alertmanager datasource in Grafana (Alerting → Silences).
+Silences can also be added in the Alertmanager web UI over an SSH tunnel (`ssh -L 9093:127.0.0.1:9093 ampere-m1`).
 
 ## Layout on the VM
 
