@@ -84,8 +84,14 @@ and `Restart=on-failure`.
   monitoring-stack internals (except `up`), inactive systemd states and per-thread stats, which keeps about 3.7k series
   (the free tier allows 10k). Scrapes run every 60s, which is 1 sample/min per series.
   Check delivery: `curl -s 127.0.0.1:9090/metrics | grep -E 'remote_storage_samples_(total|failed_total)'`.
-- **Alloy** (`alloy/config.alloy`, `127.0.0.1:12345`, about 50 MB) only sends its own self-check metrics
-  (`job="integrations/alloy-check"`), which is what the Cloud onboarding "Test connection" button looks for. It ships no logs.
+- **Alloy** (`alloy/config.alloy`, `127.0.0.1:12345`, about 50 MB) sends its own self-check metrics
+  (`job="integrations/alloy-check"`, used by the Cloud "Test connection" button) and **logs** to Grafana Cloud Loki:
+  - the journal for our services, ssh, the monitoring units and the bot's user units (review-agent, moshi-hook);
+  - any error-or-worse line from other units;
+  - `/var/log/nginx/monitoring.log` (with a `vhost` label) and `error.log`.
+
+  Pay-link, group-link and join tokens in URLs are rewritten to `REDACTED` before sending, and `auth.log` is not shipped.
+  In Cloud: Explore → `grafanacloud-*-logs` → `{host="ampere-m1", unit="sattle.service"}` or `{job="nginx", vhost="cdn.axiosiiitl.dev"}`.
   Its token is in `/etc/alloy/grafana-cloud.token` (alloy 600).
 - node_exporter series arrive in Cloud as `job="integrations/node_exporter", instance="ampere-m1"`, so Cloud's built-in
   Linux integration dashboards work. Locally they keep `job="node"`.

@@ -1,6 +1,5 @@
 // Grafana Alloy: only the self-check metrics Grafana Cloud's "Test connection" looks for
-// (job="integrations/alloy-check"). Host/service metrics go via Prometheus remote_write;
-// no logs are shipped. Token: /etc/alloy/grafana-cloud.token (alloy:alloy 600, not in git).
+// (job="integrations/alloy-check"), plus filtered logs (below). Host/service metrics go via Prometheus remote_write. Token: /etc/alloy/grafana-cloud.token (alloy:alloy 600, not in git).
 
 prometheus.exporter.self "alloy_check" { }
 
@@ -48,4 +47,89 @@ prometheus.remote_write "metrics_service" {
       password_file = "/etc/alloy/grafana-cloud.token"
     }
   }
+}
+
+// ================= LOGS → Grafana Cloud Loki =================
+// Filtered: our services, the GitHub bot, nginx, and errors from anything else.
+// Pay-link / group-link / join tokens are redacted before leaving the VM. auth.log is not shipped.
+
+loki.write "cloud" {
+  endpoint {
+    url = "https://logs-prod-028.grafana.net/loki/api/v1/push"
+
+    basic_auth {
+      username      = "1835813"
+      password_file = "/etc/alloy/grafana-cloud.token"
+    }
+  }
+  external_labels = { host = constants.hostname }
+}
+
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal__systemd_user_unit"]
+    target_label  = "user_unit"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+loki.source.journal "all" {
+  max_age       = "1h"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = { job = "journal" }
+  forward_to    = [loki.process.journal.receiver]
+}
+
+loki.process "journal" {
+  stage.match {
+    selector = "{unit!~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|ssh|prometheus|alertmanager|node_exporter|blackbox_exporter|nginx-prometheus-exporter|process-exporter|prometheus-nginxlog-exporter|wa-relay|alloy)\\\\.service\", user_unit!~\"(review-agent|moshi-hook)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
+    action   = "drop"
+  }
+
+  stage.replace {
+    expression = "/(?:s|g|join|links)/([A-Za-z0-9_-]{8,})"
+    replace    = "REDACTED"
+  }
+  forward_to = [loki.write.cloud.receiver]
+}
+
+// monitoring.log = per-site access log (has host=); access.log holds the same requests without it.
+local.file_match "nginx" {
+  path_targets = [
+    {"__path__" = "/var/log/nginx/monitoring.log", "job" = "nginx", "log_type" = "access"},
+    {"__path__" = "/var/log/nginx/error.log", "job" = "nginx", "log_type" = "error"},
+  ]
+}
+
+loki.source.file "nginx" {
+  targets       = local.file_match.nginx.targets
+  tail_from_end = true
+  forward_to    = [loki.process.nginx.receiver]
+}
+
+loki.process "nginx" {
+  stage.regex {
+    expression = "host=(?P<vhost>[a-z0-9.-]+\\.axiosiiitl\\.dev) "
+  }
+
+  stage.labels {
+    values = { vhost = "" }
+  }
+
+  stage.replace {
+    expression = "/(?:s|g|join|links)/([A-Za-z0-9_-]{8,})"
+    replace    = "REDACTED"
+  }
+  forward_to = [loki.write.cloud.receiver]
 }
