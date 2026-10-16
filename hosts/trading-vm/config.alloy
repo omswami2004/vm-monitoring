@@ -1,4 +1,5 @@
-// Grafana Alloy for the auto-trader VM (954 MB RAM, live trading).
+// Grafana Alloy for the trading VM (954 MB RAM + 1 GB swap, live trading).
+// Runs: auto-trader (tmux 0:0, :8080), kotak-bridge, txntrace.service (:8000), jarvis-bridge.service (:8787), nginx.
 // Single agent: host metrics, per-process stats, /api/health probe, logs → Grafana Cloud.
 // Token: /etc/alloy/grafana-cloud.token (alloy:alloy 600, not in git).
 
@@ -46,7 +47,7 @@ prometheus.scrape "node" {
   forward_to      = [prometheus.relabel.trim.receiver]
 }
 
-// Per-process: the trading server, the Kotak bridge, tmux, Alloy itself.
+// Per-process stats, grouped by service.
 prometheus.exporter.process "procs" {
   matcher {
     name    = "auto-trader"
@@ -55,12 +56,22 @@ prometheus.exporter.process "procs" {
 
   matcher {
     name    = "kotak-bridge"
-    cmdline = ["kotak-bridge"]
+    cmdline = ["^node index\\.js"]
   }
 
   matcher {
-    name     = "{{.Comm}}"
-    comm     = ["tmux: server", "alloy", "sshd"]
+    name    = "txntrace"
+    cmdline = ["uvicorn app.main:app"]
+  }
+
+  matcher {
+    name    = "jarvis-bridge"
+    cmdline = ["bridge/server\\.mjs"]
+  }
+
+  matcher {
+    name = "{{.Comm}}"
+    comm = ["nginx", "tmux: server", "alloy", "sshd", "systemd-journal"]
   }
 }
 
@@ -89,8 +100,20 @@ prometheus.exporter.blackbox "health" {
   config = "{ modules: { http_2xx: { prober: http, timeout: 5s, http: { preferred_ip_protocol: ip4 } } } }"
 
   target {
-    name    = "auto-trader-api"
+    name    = "auto-trader"
     address = "http://127.0.0.1:8080/api/health"
+    module  = "http_2xx"
+  }
+
+  target {
+    name    = "txntrace"
+    address = "http://127.0.0.1:8000/docs"
+    module  = "http_2xx"
+  }
+
+  target {
+    name    = "jarvis-bridge"
+    address = "http://127.0.0.1:8787/health"
     module  = "http_2xx"
   }
 }
@@ -99,13 +122,19 @@ discovery.relabel "health" {
   targets = prometheus.exporter.blackbox.health.targets
 
   rule {
-    target_label = "job"
-    replacement  = "blackbox-local"
+    source_labels = ["__param_target"]
+    target_label  = "instance"
   }
 
   rule {
-    target_label = "service"
-    replacement  = "auto-trader"
+    source_labels = ["job"]
+    regex         = "integrations/blackbox/(.+)"
+    target_label  = "service"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "blackbox-local"
   }
 }
 
@@ -180,7 +209,11 @@ loki.write "cloud" {
 
 // The bot's stdout, copied out of tmux pane 0:0 by `tmux pipe-pane` (see README).
 local.file_match "trader" {
-  path_targets = [{"__path__" = "/var/log/auto-trader/server.log", "job" = "auto-trader"}]
+  path_targets = [
+    {"__path__" = "/var/log/auto-trader/server.log", "job" = "auto-trader"},
+    {"__path__" = "/var/log/nginx/access.log", "job" = "nginx", "log_type" = "access"},
+    {"__path__" = "/var/log/nginx/error.log", "job" = "nginx", "log_type" = "error"},
+  ]
 }
 
 loki.source.file "trader" {
@@ -211,9 +244,9 @@ loki.source.journal "system" {
 }
 
 loki.process "journal" {
-  // ssh, Alloy and the kernel (OOM kills), plus errors from anything else.
+  // Our services, ssh and Alloy, plus errors from anything else (incl. kernel OOM kills).
   stage.match {
-    selector = "{unit!~\"(ssh|alloy)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
+    selector = "{unit!~\"(txntrace|jarvis-bridge|nginx|ssh|alloy)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
     action   = "drop"
   }
   forward_to = [loki.process.redact.receiver]
@@ -221,6 +254,13 @@ loki.process "journal" {
 
 // Broker credentials and session tokens never leave the VM.
 loki.process "redact" {
+  stage.decolorize { }
+
+  // Raw tick frames are high-volume and not useful as logs (also filtered at the tmux pipe).
+  stage.drop {
+    expression = "KOTAK_WS_RAW"
+  }
+
   stage.replace {
     expression = "(?i)\\b(?:access_?token|session_?token|refresh_?token|sid|hsservid|otp|totp|mpin|pin|password|passwd|secret|consumer_?(?:key|secret)|api_?key|authorization|bearer|auth)[\"']?(?:\\s*[:=]\\s*|\\s+)[\"']?(?:Bearer\\s+)?([A-Za-z0-9._~+/=-]{6,})"
     replace    = "REDACTED"

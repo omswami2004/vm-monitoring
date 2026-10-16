@@ -1,0 +1,11 @@
+# /etc/logrotate.d/auto-trader on the trading VM. copytruncate: tmux's pipe keeps the file open.
+/var/log/auto-trader/server.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    su ubuntu adm
+}

@@ -66,7 +66,7 @@ func chatID(to string) string {
 }
 
 // skipLabels are noise in a phone notification.
-var skipLabels = map[string]bool{"alertname": true, "severity": true, "instance_host": true, "__name__": true}
+var skipLabels = map[string]bool{"alertname": true, "severity": true, "__name__": true}
 
 func format(w webhook) string {
 	var b strings.Builder

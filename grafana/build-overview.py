@@ -7,8 +7,8 @@ import json
 import pathlib
 
 DS = {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}
-SYSTEM_UNITS = "sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
-APP_GROUPS = "sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring"
+SYSTEM_UNITS = "sattle|txntrace|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
+APP_GROUPS = "sattle|auto-trader|kotak-bridge|txntrace|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring"
 
 panels = []
 _id = 0
@@ -156,7 +156,12 @@ ts("Disk used", [{"expr": '1 - node_filesystem_avail_bytes{fstype=~"ext4|xfs|btr
 y += 8
 
 dash = {
-    "uid": "ampere-services", "title": "ampere-m1 services", "tags": ["ampere-m1", "overview"],
+    "uid": "ampere-services", "title": "Services by host", "tags": ["ampere-m1", "trading-vm", "overview"],
+    # Ad hoc filter: Grafana adds host=<value> to every query. Pick the machine at the top of the dashboard.
+    "templating": {"list": [{
+        "name": "Filters", "type": "adhoc", "datasource": DS,
+        "filters": [{"key": "host", "operator": "=", "value": "ampere-m1", "condition": ""}],
+    }]},
     "timezone": "browser", "schemaVersion": 39, "refresh": "1m",
     "time": {"from": "now-6h", "to": "now"}, "editable": False, "panels": panels,
     "links": [{"title": "Node Exporter Full", "type": "link", "url": "/dashboards?query=Node%20Exporter"}],

@@ -9,11 +9,32 @@
   }
  ],
  "uid": "ampere-services",
- "title": "ampere-m1 services",
+ "title": "Services by host",
  "tags": [
   "ampere-m1",
+  "trading-vm",
   "overview"
  ],
+ "templating": {
+  "list": [
+   {
+    "name": "Filters",
+    "type": "adhoc",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "${DS_PROMETHEUS}"
+    },
+    "filters": [
+     {
+      "key": "host",
+      "operator": "=",
+      "value": "ampere-m1",
+      "condition": ""
+     }
+    ]
+   }
+  ]
+ },
  "timezone": "browser",
  "schemaVersion": 39,
  "refresh": "1m",
@@ -56,7 +77,7 @@
       "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "max by (name) (node_systemd_unit_state{state=\"active\",name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"})",
+     "expr": "max by (name) (node_systemd_unit_state{state=\"active\",name=~\"(sattle|txntrace|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"})",
      "legendFormat": "{{name}}",
      "instant": true
     }
@@ -909,7 +930,7 @@
       "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "sum by (groupname) (rate(namedprocess_namegroup_cpu_seconds_total{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}[5m]))",
+     "expr": "sum by (groupname) (rate(namedprocess_namegroup_cpu_seconds_total{groupname=~\"sattle|auto-trader|kotak-bridge|txntrace|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}[5m]))",
      "legendFormat": "{{groupname}}"
     }
    ],
@@ -963,7 +984,7 @@
       "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "namedprocess_namegroup_memory_bytes{memtype=\"resident\",groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
+     "expr": "namedprocess_namegroup_memory_bytes{memtype=\"resident\",groupname=~\"sattle|auto-trader|kotak-bridge|txntrace|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
      "legendFormat": "{{groupname}}"
     }
    ],
@@ -1017,7 +1038,7 @@
       "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "node_systemd_service_restart_total{name=~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"}",
+     "expr": "node_systemd_service_restart_total{name=~\"(sattle|txntrace|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay)\\\\.service\"}",
      "legendFormat": "{{name}}"
     },
     {
@@ -1080,7 +1101,7 @@
       "uid": "${DS_PROMETHEUS}"
      },
      "refId": "A",
-     "expr": "namedprocess_namegroup_open_filedesc{groupname=~\"sattle|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
+     "expr": "namedprocess_namegroup_open_filedesc{groupname=~\"sattle|auto-trader|kotak-bridge|txntrace|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring\"}",
      "legendFormat": "{{groupname}}"
     }
    ],

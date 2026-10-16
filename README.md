@@ -144,3 +144,53 @@ Restart one at a time and check `systemctl status` after each. wa-relay:
 
 Versions at install time (2026-10-16): Prometheus 3.15.0, Alertmanager 0.34.1, node_exporter 1.12.1,
 blackbox_exporter 0.29.0, nginx-prometheus-exporter 1.5.3, process-exporter 0.8.7, prometheus-nginxlog-exporter 1.11.0. Upstream releases were used because Ubuntu 26.04 ships Prometheus 2.53 and older exporters.
+
+## Multiple machines
+
+ampere-m1 is the full stack. Every other machine runs **only Grafana Alloy**, which pushes metrics and logs straight to
+Grafana Cloud. Nothing on those machines goes through ampere-m1, except alerts on their way to WhatsApp:
+
+```
+other VM: Alloy ──metrics+logs──► Grafana Cloud ──alert──► https://stat.axiosiiitl.dev/cloud-alert ──► wa-relay ──► WhatsApp
+ampere-m1: Prometheus + Alloy ──► Grafana Cloud        local Alertmanager ──► wa-relay ──► WhatsApp
+```
+
+### Trading VM (`hosts/trading-vm/`, 140.245.209.140, `ssh trading-vm`)
+It runs auto-trader (tmux pane `0:0`, :8080), kotak-bridge, txntrace.service (:8000), jarvis-bridge.service and nginx (txn./m1./g1.axiosiiitl.dev).
+- **Alloy limits** (`alloy-override.conf`): `MemoryMax=300M` and **no swap and no MemoryHigh**. A soft cap made the kernel push
+  Alloy into swap and re-read its binary from disk in a loop (about 50 MB/s, load 2.5). It also runs at the lowest CPU/IO weight with `Nice=15`
+  and `GOMEMLIMIT=110MiB`, and uses about 60 MB in practice. If it goes over the cap, only Alloy is OOM-killed.
+- **Bot logs.** The bot writes only to the tmux pane, so its output is copied to a file without touching the process:
+  ```sh
+  tmux pipe-pane -t 0:0 "grep --line-buffered -v KOTAK_WS_RAW >> /var/log/auto-trader/server.log"
+  ```
+  Raw tick frames are dropped. The pipe lasts as long as the pane does; **redo it if the tmux session or pane is recreated.**
+  Check it with `tmux list-panes -t 0 -F '#{pane_pipe}'` (1 = piping). Rotation: `logrotate-auto-trader` (daily, 14, copytruncate).
+- **Redaction.** Before logs leave the VM, Alloy strips ANSI colours and rewrites access/session/refresh tokens, sid, OTP/TOTP,
+  MPIN/PIN, passwords, secrets, consumer keys, API keys, Authorization/Bearer values and any JWT to `REDACTED`.
+- **Metrics.** Host (`job="integrations/node_exporter"`), per-process groups (auto-trader, kotak-bridge, txntrace, jarvis-bridge,
+  nginx, …) and loopback probes of :8080/api/health, :8000/docs and :8787/health. txn. and m1. are also probed publicly from ampere-m1.
+- **Deploy a change:** `scp hosts/trading-vm/config.alloy trading-vm:/tmp/ && ssh trading-vm 'sudo install -m640 -o root -g alloy /tmp/config.alloy /etc/alloy/config.alloy && sudo systemctl reload alloy'`
+
+### Alerts in Grafana Cloud (`grafana-cloud/provision.py`)
+These are created through the API with a service account token (`~/.config/grafana-cloud/sa-token`, mode 600), and re-running the script is safe:
+- contact point **whatsapp**: a webhook to `https://stat.axiosiiitl.dev/cloud-alert` with `Authorization: Bearer $CLOUD_TOKEN`
+  (from `/etc/wa-relay/env`). nginx exposes only that path, and wa-relay rejects requests without the token.
+- notification policy: alerts labelled `notify=whatsapp` go to WhatsApp.
+- folder "VM monitoring", group **trading-vm**: VM not reporting, auto-trader or kotak-bridge process gone, a local probe failing,
+  a failed unit, disk over 85%, RAM under 100 MB available, any OOM kill.
+- group **heartbeat**: ampere-m1 not reporting. It is labelled `notify=email` because when ampere-m1 is down, so is its WhatsApp relay.
+  **It needs an email contact point**; the stack's default receiver is `empty`.
+- dashboards: "Services by host" (pick the host with the filter at the top), Node Exporter Full, NGINX, Named processes, Blackbox.
+
+```sh
+WA_CLOUD_TOKEN="$(sudo sed -n 's/^CLOUD_TOKEN=//p' /etc/wa-relay/env)" python3 -I grafana-cloud/provision.py
+```
+
+### Adding another machine
+1. Authorize a key: `ssh-keygen -t ed25519 -f ~/.ssh/<name>`, add the `.pub` to that machine's `authorized_keys`, and add a `Host` entry to `~/.ssh/config`.
+2. Install Alloy from Grafana's apt repo there (key fingerprint `B53A E77B ADB6 30A6 8304 6005 963F A277 1045 8545`).
+3. Copy `hosts/trading-vm/` to `hosts/<name>/` and change the process matchers, probe targets and log files.
+   Install the push token as `/etc/alloy/grafana-cloud.token` (alloy 600), plus the config and the override (adjust `MemoryMax` to the machine).
+4. Add its rules to `grafana-cloud/provision.py` (copy the trading-vm group and change the instance), then run the script.
+5. Watch the series count against 10k: `count({__name__=~".+"})` in Grafana Cloud Explore.

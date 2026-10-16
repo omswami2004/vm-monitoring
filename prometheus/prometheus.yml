@@ -4,7 +4,7 @@ global:
   scrape_interval: 60s
   evaluation_interval: 60s
   external_labels:
-    instance_host: ampere-m1
+    host: ampere-m1
 
 # Ship to Grafana Cloud (hosted Prometheus). Credentials: user = stack metrics ID,
 # password_file = /etc/prometheus/grafana-cloud.token (prometheus:prometheus 600, not in git).
@@ -90,6 +90,9 @@ scrape_configs:
           - https://index.axiosiiitl.dev/
           - https://fetch.axiosiiitl.dev/
           - https://auth.axiosiiitl.dev/
+          # on the trading VM (140.245.209.140)
+          - https://txn.axiosiiitl.dev/
+          - https://m1.axiosiiitl.dev/
     relabel_configs: &blackbox_relabel
       - source_labels: [__address__]
         target_label: __param_target

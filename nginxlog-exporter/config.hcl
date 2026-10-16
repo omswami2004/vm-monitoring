@@ -14,7 +14,7 @@ namespace "nginx" {
   # Only known vhosts become label values; scanners' random Host headers collapse to "other".
   relabel "vhost" {
     from      = "host"
-    whitelist = ["sattle.axiosiiitl.dev", "battle.axiosiiitl.dev", "g1.axiosiiitl.dev", "g2.axiosiiitl.dev", "cdn.axiosiiitl.dev", "index.axiosiiitl.dev", "fetch.axiosiiitl.dev", "auth.axiosiiitl.dev", "stat.axiosiiitl.dev"]
+    whitelist = ["sattle.axiosiiitl.dev", "battle.axiosiiitl.dev", "g1.axiosiiitl.dev", "g2.axiosiiitl.dev", "cdn.axiosiiitl.dev", "index.axiosiiitl.dev", "fetch.axiosiiitl.dev", "auth.axiosiiitl.dev", "stat.axiosiiitl.dev", "txn.axiosiiitl.dev", "m1.axiosiiitl.dev"]
   }
   histogram_buckets = [.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10]
 }
