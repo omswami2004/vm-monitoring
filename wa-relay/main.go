@@ -9,10 +9,13 @@
 //	               with country code, or complete chat IDs (…@s.whatsapp.net / …@g.us)
 //	LISTEN_ADDR    default 127.0.0.1:9097
 //	GRAFANA_URL    optional link appended to every message
+//	CLOUD_TOKEN    bearer token for /cloud-alert, the endpoint nginx exposes for Grafana Cloud
+//	               alerting (its webhook payload has the same alerts[] shape). Unset = disabled.
 package main
 
 import (
 	"bytes"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -42,6 +45,7 @@ var (
 	serverURL  = strings.TrimRight(os.Getenv("WA_SERVER_URL"), "/")
 	apiKey     = os.Getenv("WA_API_KEY")
 	grafanaURL = os.Getenv("GRAFANA_URL")
+	cloudToken = os.Getenv("CLOUD_TOKEN")
 	recipients []string
 	client     = &http.Client{Timeout: 20 * time.Second}
 
@@ -163,6 +167,17 @@ func handleAlert(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// handleCloudAlert is /alert behind a bearer token, for webhooks arriving through nginx.
+func handleCloudAlert(w http.ResponseWriter, r *http.Request) {
+	want := "Bearer " + cloudToken
+	got := r.Header.Get("Authorization")
+	if cloudToken == "" || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	handleAlert(w, r)
+}
+
 func handleMetrics(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 	fmt.Fprintf(w, "# TYPE wa_relay_webhooks_received_total counter\nwa_relay_webhooks_received_total %d\n", received.Load())
@@ -190,6 +205,7 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/alert", handleAlert)
+	mux.HandleFunc("/cloud-alert", handleCloudAlert)
 	mux.HandleFunc("/metrics", handleMetrics)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) { io.WriteString(w, "ok\n") })
 	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}

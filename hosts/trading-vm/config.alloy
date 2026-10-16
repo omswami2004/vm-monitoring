@@ -1,0 +1,235 @@
+// Grafana Alloy for the auto-trader VM (954 MB RAM, live trading).
+// Single agent: host metrics, per-process stats, /api/health probe, logs → Grafana Cloud.
+// Token: /etc/alloy/grafana-cloud.token (alloy:alloy 600, not in git).
+
+// ---------------- metrics ----------------
+prometheus.remote_write "cloud" {
+  endpoint {
+    url = "https://prometheus-prod-43-prod-ap-south-1.grafana.net/api/prom/push"
+
+    basic_auth {
+      username      = "3680297"
+      password_file = "/etc/alloy/grafana-cloud.token"
+    }
+  }
+  external_labels = { host = constants.hostname }
+}
+
+// Host (same labels Grafana Cloud's Linux integration expects).
+prometheus.exporter.unix "node" {
+  disable_collectors = ["ipvs", "btrfs", "infiniband", "xfs", "zfs", "arp", "bonding", "nfs", "nfsd", "softnet", "thermal_zone", "powersupplyclass", "cpufreq"]
+  enable_collectors  = ["systemd"]
+
+  filesystem {
+    fs_types_exclude     = "^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|tmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs)$"
+    mount_points_exclude = "^/(dev|proc|run|sys|snap|var/lib/snapd)($|/)"
+  }
+}
+
+discovery.relabel "node" {
+  targets = prometheus.exporter.unix.node.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/node_exporter"
+  }
+}
+
+prometheus.scrape "node" {
+  targets         = discovery.relabel.node.output
+  scrape_interval = "60s"
+  forward_to      = [prometheus.relabel.trim.receiver]
+}
+
+// Per-process: the trading server, the Kotak bridge, tmux, Alloy itself.
+prometheus.exporter.process "procs" {
+  matcher {
+    name    = "auto-trader"
+    cmdline = ["server-[0-9.]+-"]
+  }
+
+  matcher {
+    name    = "kotak-bridge"
+    cmdline = ["kotak-bridge"]
+  }
+
+  matcher {
+    name     = "{{.Comm}}"
+    comm     = ["tmux: server", "alloy", "sshd"]
+  }
+}
+
+discovery.relabel "procs" {
+  targets = prometheus.exporter.process.procs.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "process"
+  }
+}
+
+prometheus.scrape "procs" {
+  targets         = discovery.relabel.procs.output
+  scrape_interval = "60s"
+  forward_to      = [prometheus.relabel.trim.receiver]
+}
+
+// Is the trading API answering on loopback?
+prometheus.exporter.blackbox "health" {
+  config = "{ modules: { http_2xx: { prober: http, timeout: 5s, http: { preferred_ip_protocol: ip4 } } } }"
+
+  target {
+    name    = "auto-trader-api"
+    address = "http://127.0.0.1:8080/api/health"
+    module  = "http_2xx"
+  }
+}
+
+discovery.relabel "health" {
+  targets = prometheus.exporter.blackbox.health.targets
+
+  rule {
+    target_label = "job"
+    replacement  = "blackbox-local"
+  }
+
+  rule {
+    target_label = "service"
+    replacement  = "auto-trader"
+  }
+}
+
+prometheus.scrape "health" {
+  targets         = discovery.relabel.health.output
+  scrape_interval = "60s"
+  forward_to      = [prometheus.relabel.trim.receiver]
+}
+
+// Alloy self-check (Cloud "Test connection").
+prometheus.exporter.self "alloy_check" { }
+
+discovery.relabel "alloy_check" {
+  targets = prometheus.exporter.self.alloy_check.targets
+
+  rule {
+    target_label = "instance"
+    replacement  = constants.hostname
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "integrations/alloy-check"
+  }
+}
+
+prometheus.scrape "alloy_check" {
+  targets         = discovery.relabel.alloy_check.output
+  scrape_interval = "60s"
+  forward_to      = [prometheus.relabel.alloy_check.receiver]
+}
+
+prometheus.relabel "alloy_check" {
+  forward_to = [prometheus.remote_write.cloud.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(alloy_build.*|process_start_time_seconds|prometheus_remote_write_wal_samples_appended_total)"
+    action        = "keep"
+  }
+}
+
+// Keep the series count small.
+prometheus.relabel "trim" {
+  forward_to = [prometheus.remote_write.cloud.receiver]
+
+  rule {
+    source_labels = ["__name__"]
+    regex         = "(go_|promhttp_|node_scrape_collector_|namedprocess_namegroup_thread_).*"
+    action        = "drop"
+  }
+
+  rule {
+    source_labels = ["__name__", "state"]
+    regex         = "node_systemd_unit_state;(activating|deactivating|inactive)"
+    action        = "drop"
+  }
+}
+
+// ---------------- logs ----------------
+loki.write "cloud" {
+  endpoint {
+    url = "https://logs-prod-028.grafana.net/loki/api/v1/push"
+
+    basic_auth {
+      username      = "1835813"
+      password_file = "/etc/alloy/grafana-cloud.token"
+    }
+  }
+  external_labels = { host = constants.hostname }
+}
+
+// The bot's stdout, copied out of tmux pane 0:0 by `tmux pipe-pane` (see README).
+local.file_match "trader" {
+  path_targets = [{"__path__" = "/var/log/auto-trader/server.log", "job" = "auto-trader"}]
+}
+
+loki.source.file "trader" {
+  targets       = local.file_match.trader.targets
+  tail_from_end = true
+  forward_to    = [loki.process.redact.receiver]
+}
+
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "level"
+  }
+}
+
+loki.source.journal "system" {
+  max_age       = "1h"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = { job = "journal" }
+  forward_to    = [loki.process.journal.receiver]
+}
+
+loki.process "journal" {
+  // ssh, Alloy and the kernel (OOM kills), plus errors from anything else.
+  stage.match {
+    selector = "{unit!~\"(ssh|alloy)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
+    action   = "drop"
+  }
+  forward_to = [loki.process.redact.receiver]
+}
+
+// Broker credentials and session tokens never leave the VM.
+loki.process "redact" {
+  stage.replace {
+    expression = "(?i)\\b(?:access_?token|session_?token|refresh_?token|sid|hsservid|otp|totp|mpin|pin|password|passwd|secret|consumer_?(?:key|secret)|api_?key|authorization|bearer|auth)[\"']?(?:\\s*[:=]\\s*|\\s+)[\"']?(?:Bearer\\s+)?([A-Za-z0-9._~+/=-]{6,})"
+    replace    = "REDACTED"
+  }
+
+  stage.replace {
+    // JWTs anywhere in the line
+    expression = "(eyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,})"
+    replace    = "REDACTED_JWT"
+  }
+  forward_to = [loki.write.cloud.receiver]
+}

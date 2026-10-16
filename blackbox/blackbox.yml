@@ -16,3 +16,12 @@ modules:
   tcp_connect:
     prober: tcp
     timeout: 5s
+  # Alert intake must answer 401 to an unauthenticated POST (nginx up, wa-relay up, token enforced).
+  http_post_401:
+    prober: http
+    timeout: 10s
+    http:
+      method: POST
+      preferred_ip_protocol: ip4
+      valid_status_codes: [401]
+      body: "{}"

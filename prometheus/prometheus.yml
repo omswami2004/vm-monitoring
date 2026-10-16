@@ -114,6 +114,14 @@ scrape_configs:
         labels: { service: screen-streamer }
     relabel_configs: *blackbox_relabel
 
+  - job_name: blackbox-alert-intake
+    scrape_interval: 60s
+    metrics_path: /probe
+    params: { module: [http_post_401] }
+    static_configs:
+      - targets: ["https://stat.axiosiiitl.dev/cloud-alert"]
+    relabel_configs: *blackbox_relabel
+
   - job_name: blackbox-tcp
     scrape_interval: 60s
     metrics_path: /probe
