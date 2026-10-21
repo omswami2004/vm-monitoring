@@ -133,6 +133,8 @@ def rule(uid, title, expr, op, threshold, for_, summary, notify="whatsapp", seve
 
 T = f'instance="{TRADING}"'
 H = f'host="{TRADING}"'
+# NSE market hours, Mon-Fri 09:15-15:30 IST = 03:45-10:00 UTC (PromQL time functions are UTC). Holidays not handled.
+MARKET_HOURS = ('on() (day_of_week() >= 1 <= 5) and on() ((hour() * 60 + minute()) >= 225 < 600)')
 trading_rules = [
     rule("trading-vm-down", "Trading VM not reporting",
          f'absent_over_time(up{{job="integrations/node_exporter",{T}}}[5m])', "gt", 0, "1m",
@@ -141,14 +143,17 @@ trading_rules = [
          f'namedprocess_namegroup_num_procs{{groupname="auto-trader",{T}}}', "lt", 1, "1m",
          "auto-trader server process is not running on the trading VM"),
     rule("trading-kotak-bridge-gone", "kotak-bridge process not running",
-         f'namedprocess_namegroup_num_procs{{groupname="kotak-bridge",{T}}}', "lt", 1, "2m",
-         "kotak-bridge (node index.js) is not running on the trading VM"),
+         f'namedprocess_namegroup_num_procs{{groupname="kotak-bridge",{T}}} and {MARKET_HOURS}', "lt", 1, "2m",
+         "kotak-bridge (node index.js) is not running on the trading VM during market hours"),
     rule("trading-probe-failing", "Trading VM service not answering",
          f'probe_success{{{H}}}', "lt", 1, "2m",
          "{{ $labels.service }} on the trading VM is not answering ({{ $labels.instance }})"),
     rule("trading-unit-failed", "Trading VM systemd unit failed",
-         f'node_systemd_unit_state{{state="failed",{T}}}', "gt", 0, "1m",
+         f'node_systemd_unit_state{{state="failed",type!="oneshot",{T}}}', "gt", 0, "1m",
          "systemd unit {{ $labels.name }} failed on the trading VM"),
+    rule("trading-oneshot-failed", "Trading VM oneshot unit failed",
+         f'node_systemd_unit_state{{state="failed",type="oneshot",name!="fwupd-refresh.service",{T}}}', "gt", 0, "1m",
+         "oneshot unit {{ $labels.name }} (a timer or batch job) failed on the trading VM", severity="warning"),
     rule("trading-disk-full", "Trading VM disk almost full",
          f'1 - node_filesystem_avail_bytes{{{T},fstype=~"ext4|xfs|btrfs"}} / node_filesystem_size_bytes{{{T},fstype=~"ext4|xfs|btrfs"}}',
          "gt", 0.85, "5m", "Disk {{ $labels.mountpoint }} on the trading VM is over 85% full", severity="warning"),
