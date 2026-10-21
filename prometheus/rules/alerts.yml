@@ -14,12 +14,19 @@ groups:
         annotations:
           summary: "Probe failing: {{ $labels.instance }}"
           description: "HTTP status {{ with printf `probe_http_status_code{instance='%s'}` $labels.instance | query }}{{ . | first | value }}{{ end }}"
+      # fwupd-refresh is ignored: no flashable firmware on a cloud VM, and it fails whenever LVFS is down.
       - alert: SystemdUnitFailed
-        expr: node_systemd_unit_state{state="failed"} == 1
+        expr: node_systemd_unit_state{state="failed",type!="oneshot"} == 1
         for: 1m
         labels: { severity: critical }
         annotations:
           summary: "systemd unit {{ $labels.name }} is in failed state"
+      - alert: OneshotUnitFailed
+        expr: node_systemd_unit_state{state="failed",type="oneshot",name!="fwupd-refresh.service"} == 1
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: "oneshot unit {{ $labels.name }} failed (a timer or batch job)"
       - alert: UserUnitNotActive
         expr: user_unit_active == 0
         for: 2m
