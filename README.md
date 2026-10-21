@@ -42,7 +42,8 @@ with header `key: $WA_API_KEY` and body `{chatId, text}`.
 |---|---|
 | TargetDown | a scrape target is down for more than 2m |
 | ProbeFailing | a blackbox probe fails for more than 2m |
-| SystemdUnitFailed | any system unit is in `failed` state |
+| SystemdUnitFailed | a long-running system unit is in `failed` state |
+| OneshotUnitFailed (warning) | a oneshot unit (timer job) failed; `fwupd-refresh.service` is ignored |
 | UserUnitNotActive | review-agent / moshi-hook is not active for more than 2m |
 | ServiceRestartingRepeatedly | more than 3 restarts in 15m (system or user units) |
 | DiskAlmostFull | more than 85% used for 5m |
@@ -177,8 +178,8 @@ These are created through the API with a service account token (`~/.config/grafa
 - contact point **whatsapp**: a webhook to `https://stat.axiosiiitl.dev/cloud-alert` with `Authorization: Bearer $CLOUD_TOKEN`
   (from `/etc/wa-relay/env`). nginx exposes only that path, and wa-relay rejects requests without the token.
 - notification policy: alerts labelled `notify=whatsapp` go to WhatsApp.
-- folder "VM monitoring", group **trading-vm**: VM not reporting, auto-trader or kotak-bridge process gone, a local probe failing,
-  a failed unit, disk over 85%, RAM under 100 MB available, any OOM kill.
+- folder "VM monitoring", group **trading-vm**: VM not reporting, auto-trader or kotak-bridge process gone (market hours only, Mon–Fri 09:15–15:30 IST),
+  a local probe failing, a failed unit (oneshot units as warning, `fwupd-refresh` ignored), disk over 85%, RAM under 100 MB available, any OOM kill.
 - group **heartbeat**: ampere-m1 not reporting. It is labelled `notify=email` because when ampere-m1 is down, so is its WhatsApp relay.
   **It needs an email contact point**; the stack's default receiver is `empty`.
 - dashboards: "Services by host" (pick the host with the filter at the top), Node Exporter Full, NGINX, Named processes, Blackbox.
