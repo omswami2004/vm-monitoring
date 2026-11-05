@@ -18,8 +18,9 @@ A copy of this file is installed at `/etc/prometheus/README.md`.
 | Per-service CPU/RAM/FDs (sattle, jarvis-bridge, screen-streamer, private-cdn, review-agent, nginx, …) | process-exporter `127.0.0.1:9256`, groups in `process-exporter/config.yml` | "Named processes", services row |
 | nginx connections | stub_status on `127.0.0.1:8081` → nginx-prometheus-exporter `127.0.0.1:9113` | "NGINX exporter" |
 | Per-site requests / status codes / latency | extra access log `/var/log/nginx/monitoring.log` (has `$host`, `$request_time`) → prometheus-nginxlog-exporter `127.0.0.1:4040` | Traffic row |
-| Public sites (sattle, battle, g1, g2, cdn, index, fetch, auth) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
+| Public sites (sattle, battle, g1, g2, cdn) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
 | Backends on loopback (3100/health, 8787/health, 8000/api/server, RTMP 3000; private-cdn moved to ampere m2 on 2026-11-05) | blackbox (http / tcp) | Status → Backends |
+| ampere m2's origin, bypassing Cloudflare (cdn `/healthz`, origin cert expiry) | blackbox job `blackbox-origin`, modules `http_origin_*`; `ampere-m2` must resolve in ampere m1's `/etc/hosts` | Status |
 | TLS: edge cert (Cloudflare) | blackbox `probe_ssl_earliest_cert_expiry` | Cert days left |
 | TLS: origin Let's Encrypt certs on disk | textfile `ssl_cert_file_not_after_seconds` | Cert days left |
 | The monitoring stack itself | each component's `/metrics` | "Prometheus 2.0 Overview", "Alertmanager" |

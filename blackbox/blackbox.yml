@@ -25,3 +25,15 @@ modules:
       preferred_ip_protocol: ip4
       valid_status_codes: [401]
       body: "{}"
+  # ampere m2 directly (see the blackbox-origin job). The URL's host is "ampere-m2", so the
+  # real site name goes in the Host header and TLS SNI, and the certificate is checked against it.
+  http_origin_cdn:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: false
+      valid_status_codes: [200, 301, 302]
+      fail_if_not_ssl: true
+      headers: { Host: cdn.axiosiiitl.dev }
+      tls_config: { server_name: cdn.axiosiiitl.dev }

@@ -86,11 +86,9 @@ scrape_configs:
           - https://battle.axiosiiitl.dev/health
           - https://g1.axiosiiitl.dev/
           - https://g2.axiosiiitl.dev/
+          # on ampere m2
           - https://cdn.axiosiiitl.dev/
-          - https://index.axiosiiitl.dev/
-          - https://fetch.axiosiiitl.dev/
-          - https://auth.axiosiiitl.dev/
-          # on the trading VM (140.245.209.140)
+          # on the auto-trader machine
           - https://txn.axiosiiitl.dev/
           - https://m1.axiosiiitl.dev/
     relabel_configs: &blackbox_relabel
@@ -114,6 +112,26 @@ scrape_configs:
       - targets: ["http://127.0.0.1:8000/api/server"]
         labels: { service: screen-streamer }
     relabel_configs: *blackbox_relabel
+
+  # ampere m2's nginx directly, bypassing Cloudflare: tells "m2 down" apart from
+  # "DNS/Cloudflare wrong", and gives the origin certificate's expiry (TLSCertExpiringSoon).
+  # "ampere-m2" resolves through /etc/hosts on ampere m1.
+  - job_name: blackbox-origin
+    scrape_interval: 60s
+    metrics_path: /probe
+    static_configs:
+      - targets: ["https://ampere-m2/healthz"]
+        labels: { module: http_origin_cdn, site: cdn.axiosiiitl.dev }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [module]
+        target_label: __param_module
+      - source_labels: [site]
+        target_label: instance
+        replacement: origin:$1
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
 
   - job_name: blackbox-alert-intake
     scrape_interval: 60s
