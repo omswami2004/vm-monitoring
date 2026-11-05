@@ -111,8 +111,6 @@ scrape_configs:
         labels: { service: sattle }
       - targets: ["http://127.0.0.1:8787/health"]
         labels: { service: jarvis-bridge }
-      - targets: ["http://127.0.0.1:8090/healthz"]
-        labels: { service: private-cdn }
       - targets: ["http://127.0.0.1:8000/api/server"]
         labels: { service: screen-streamer }
     relabel_configs: *blackbox_relabel
