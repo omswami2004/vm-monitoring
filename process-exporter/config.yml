@@ -4,8 +4,6 @@ process_names:
     cmdline: ['/home/ubuntu/sattle/']
   - name: screen-streamer
     cmdline: ['screen-streamer/server\.js']
-  - name: jarvis-bridge
-    cmdline: ['bridge/server\.mjs']
   - name: private-cdn
     exe: [/usr/local/bin/private-cdn]
   - name: review-agent

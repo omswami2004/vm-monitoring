@@ -15,11 +15,11 @@ A copy of this file is installed at `/etc/prometheus/README.md`.
 | Up/failed/restarts of **every** systemd system unit | node_exporter `--collector.systemd` (+ restart counts) | "ampere-m1 services" → Status |
 | User units `review-agent` (GitHub bot) and `moshi-hook` | `vm-textfile-metrics.timer` (every 1 min) → textfile collector | Status, GitHub review agent row |
 | GitHub bot activity | same script: `review_agent_log_age_seconds`, `review_agent_responses_posted_total` | GitHub review agent row |
-| Per-service CPU/RAM/FDs (sattle, jarvis-bridge, screen-streamer, private-cdn, review-agent, nginx, …) | process-exporter `127.0.0.1:9256`, groups in `process-exporter/config.yml` | "Named processes", services row |
+| Per-service CPU/RAM/FDs (sattle, screen-streamer, private-cdn, review-agent, nginx, …) | process-exporter `127.0.0.1:9256`, groups in `process-exporter/config.yml` | "Named processes", services row |
 | nginx connections | stub_status on `127.0.0.1:8081` → nginx-prometheus-exporter `127.0.0.1:9113` | "NGINX exporter" |
 | Per-site requests / status codes / latency | extra access log `/var/log/nginx/monitoring.log` (has `$host`, `$request_time`) → prometheus-nginxlog-exporter `127.0.0.1:4040` | Traffic row |
-| Public sites (sattle, battle, g1, g2, cdn) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
-| Backends on loopback (3100/health, 8787/health, 8000/api/server, RTMP 3000; private-cdn moved to ampere m2 on 2026-11-05) | blackbox (http / tcp) | Status → Backends |
+| Public sites (sattle, battle, g2, cdn) | blackbox_exporter `127.0.0.1:9115`, every 60s, 2xx/3xx/401 = up | Status, "Blackbox Exporter" |
+| Backends on loopback (3100/health, 8000/api/server, RTMP 3000; private-cdn moved to ampere m2 on 2026-11-05) | blackbox (http / tcp) | Status → Backends |
 | ampere m2's origin, bypassing Cloudflare (cdn `/healthz`, origin cert expiry) | blackbox job `blackbox-origin`, modules `http_origin_*`; `ampere-m2` must resolve in ampere m1's `/etc/hosts` | Status |
 | TLS: edge cert (Cloudflare) | blackbox `probe_ssl_earliest_cert_expiry` | Cert days left |
 | TLS: origin Let's Encrypt certs on disk | textfile `ssl_cert_file_not_after_seconds` | Cert days left |
@@ -157,7 +157,7 @@ ampere-m1: Prometheus + Alloy ──► Grafana Cloud        local Alertmanager 
 ```
 
 ### Trading VM (`hosts/trading-vm/`, 140.245.209.140, `ssh trading-vm`)
-It runs auto-trader (tmux pane `0:0`, :8080), kotak-bridge, txntrace.service (:8000), jarvis-bridge.service and nginx (txn./m1./g1.axiosiiitl.dev).
+It runs auto-trader (tmux pane `0:0`, :8080), kotak-bridge, txntrace.service (:8000) and nginx (txn./m1.axiosiiitl.dev).
 - **Alloy limits** (`alloy-override.conf`): `MemoryMax=300M` and **no swap and no MemoryHigh**. A soft cap made the kernel push
   Alloy into swap and re-read its binary from disk in a loop (about 50 MB/s, load 2.5). It also runs at the lowest CPU/IO weight with `Nice=15`
   and `GOMEMLIMIT=110MiB`, and uses about 60 MB in practice. If it goes over the cap, only Alloy is OOM-killed.
@@ -169,8 +169,8 @@ It runs auto-trader (tmux pane `0:0`, :8080), kotak-bridge, txntrace.service (:8
   Check it with `tmux list-panes -t 0 -F '#{pane_pipe}'` (1 = piping). Rotation: `logrotate-auto-trader` (daily, 14, copytruncate).
 - **Redaction.** Before logs leave the VM, Alloy strips ANSI colours and rewrites access/session/refresh tokens, sid, OTP/TOTP,
   MPIN/PIN, passwords, secrets, consumer keys, API keys, Authorization/Bearer values and any JWT to `REDACTED`.
-- **Metrics.** Host (`job="integrations/node_exporter"`), per-process groups (auto-trader, kotak-bridge, txntrace, jarvis-bridge,
-  nginx, …) and loopback probes of :8080/api/health, :8000/docs and :8787/health. txn. and m1. are also probed publicly from ampere-m1.
+- **Metrics.** Host (`job="integrations/node_exporter"`), per-process groups (auto-trader, kotak-bridge, txntrace,
+  nginx, …) and loopback probes of :8080/api/health and :8000/docs. txn. and m1. are also probed publicly from ampere-m1.
 - **Deploy a change:** `scp hosts/trading-vm/config.alloy trading-vm:/tmp/ && ssh trading-vm 'sudo install -m640 -o root -g alloy /tmp/config.alloy /etc/alloy/config.alloy && sudo systemctl reload alloy'`
 
 ### Alerts in Grafana Cloud (`grafana-cloud/provision.py`)

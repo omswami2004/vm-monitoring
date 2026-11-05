@@ -1,5 +1,5 @@
 // Grafana Alloy for the trading VM (954 MB RAM + 1 GB swap, live trading).
-// Runs: auto-trader (tmux 0:0, :8080), kotak-bridge, txntrace.service (:8000), jarvis-bridge.service (:8787), nginx.
+// Runs: auto-trader (tmux 0:0, :8080), kotak-bridge, txntrace.service (:8000), nginx.
 // Single agent: host metrics, per-process stats, /api/health probe, logs → Grafana Cloud.
 // Token: /etc/alloy/grafana-cloud.token (alloy:alloy 600, not in git).
 
@@ -64,10 +64,6 @@ prometheus.exporter.process "procs" {
     cmdline = ["uvicorn app.main:app"]
   }
 
-  matcher {
-    name    = "jarvis-bridge"
-    cmdline = ["bridge/server\\.mjs"]
-  }
 
   matcher {
     name = "{{.Comm}}"
@@ -111,11 +107,6 @@ prometheus.exporter.blackbox "health" {
     module  = "http_2xx"
   }
 
-  target {
-    name    = "jarvis-bridge"
-    address = "http://127.0.0.1:8787/health"
-    module  = "http_2xx"
-  }
 }
 
 discovery.relabel "health" {
@@ -246,7 +237,7 @@ loki.source.journal "system" {
 loki.process "journal" {
   // Our services, ssh and Alloy, plus errors from anything else (incl. kernel OOM kills).
   stage.match {
-    selector = "{unit!~\"(txntrace|jarvis-bridge|nginx|ssh|alloy)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
+    selector = "{unit!~\"(txntrace|nginx|ssh|alloy)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
     action   = "drop"
   }
   forward_to = [loki.process.redact.receiver]

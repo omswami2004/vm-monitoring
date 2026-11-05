@@ -84,7 +84,6 @@ scrape_configs:
       - targets:
           - https://sattle.axiosiiitl.dev/
           - https://battle.axiosiiitl.dev/health
-          - https://g1.axiosiiitl.dev/
           - https://g2.axiosiiitl.dev/
           # on ampere m2
           - https://cdn.axiosiiitl.dev/
@@ -107,8 +106,6 @@ scrape_configs:
     static_configs:
       - targets: ["http://127.0.0.1:3100/health"]
         labels: { service: sattle }
-      - targets: ["http://127.0.0.1:8787/health"]
-        labels: { service: jarvis-bridge }
       - targets: ["http://127.0.0.1:8000/api/server"]
         labels: { service: screen-streamer }
     relabel_configs: *blackbox_relabel

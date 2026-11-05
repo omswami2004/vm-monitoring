@@ -7,8 +7,8 @@ import json
 import pathlib
 
 DS = {"type": "prometheus", "uid": "${DS_PROMETHEUS}"}
-SYSTEM_UNITS = "sattle|txntrace|jarvis-bridge|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
-APP_GROUPS = "sattle|auto-trader|kotak-bridge|txntrace|jarvis-bridge|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring"
+SYSTEM_UNITS = "sattle|txntrace|screen-streamer|private-cdn|nginx|prometheus|alertmanager|alloy|node_exporter|process-exporter|blackbox_exporter|nginx-prometheus-exporter|prometheus-nginxlog-exporter|wa-relay"
+APP_GROUPS = "sattle|auto-trader|kotak-bridge|txntrace|screen-streamer|private-cdn|review-agent|moshi-hook|nginx|monitoring"
 
 panels = []
 _id = 0
