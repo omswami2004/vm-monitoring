@@ -93,7 +93,7 @@ loki.source.journal "all" {
 
 loki.process "journal" {
   stage.match {
-    selector = "{unit!~\"(sattle|jarvis-bridge|screen-streamer|private-cdn|nginx|ssh|prometheus|alertmanager|node_exporter|blackbox_exporter|nginx-prometheus-exporter|process-exporter|prometheus-nginxlog-exporter|wa-relay|alloy)\\\\.service\", user_unit!~\"(review-agent|moshi-hook)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
+    selector = "{unit!~\"(sattle|screen-streamer|private-cdn|nginx|ssh|prometheus|alertmanager|node_exporter|blackbox_exporter|nginx-prometheus-exporter|process-exporter|prometheus-nginxlog-exporter|wa-relay|alloy)\\\\.service\", user_unit!~\"(review-agent|moshi-hook)\\\\.service\", level!~\"emerg|alert|crit|err\"}"
     action   = "drop"
   }
 
