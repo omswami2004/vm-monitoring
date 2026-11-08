@@ -179,7 +179,7 @@ These are created through the API with a service account token (`~/.config/grafa
 - contact point **whatsapp**: a webhook to `https://stat.axiosiiitl.dev/cloud-alert` with `Authorization: Bearer $CLOUD_TOKEN`
   (from `/etc/wa-relay/env`). nginx exposes only that path, and wa-relay rejects requests without the token.
 - notification policy: alerts labelled `notify=whatsapp` go to WhatsApp.
-- folder "VM monitoring", group **trading-vm**: VM not reporting, auto-trader or kotak-bridge process gone (market hours only, Mon–Fri 09:15–15:30 IST),
+- folder "VM monitoring", group **trading-vm**: VM not reporting, auto-trader or kotak-bridge process gone (market hours only, Mon–Fri 09:10–15:40 IST),
   a local probe failing, a failed unit (oneshot units as warning, `fwupd-refresh` ignored), disk over 85%, RAM under 100 MB available, any OOM kill.
 - group **heartbeat**: ampere-m1 not reporting. It is labelled `notify=email` because when ampere-m1 is down, so is its WhatsApp relay.
   **It needs an email contact point**; the stack's default receiver is `empty`.
@@ -188,6 +188,8 @@ These are created through the API with a service account token (`~/.config/grafa
 ```sh
 ALERT_EMAIL=you@example.com WA_CLOUD_TOKEN="$(sudo sed -n 's/^CLOUD_TOKEN=//p' /etc/wa-relay/env)" python3 -I grafana-cloud/provision.py
 ```
+
+Pass `SKIP_DASHBOARDS=1` to re-provision rules without overwriting dashboards.
 
 ### Adding another machine
 1. Authorize a key: `ssh-keygen -t ed25519 -f ~/.ssh/<name>`, add the `.pub` to that machine's `authorized_keys`, and add a `Host` entry to `~/.ssh/config`.

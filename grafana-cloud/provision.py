@@ -7,6 +7,7 @@ Idempotent (fixed UIDs; existing objects are updated). Secrets are read, never p
   $WA_CLOUD_TOKEN                     wa-relay's CLOUD_TOKEN (from /etc/wa-relay/env)
 
 Run:  WA_CLOUD_TOKEN="$(sudo sed -n 's/^CLOUD_TOKEN=//p' /etc/wa-relay/env)" python3 -I grafana-cloud/provision.py
+      Set SKIP_DASHBOARDS=1 to re-provision rules without overwriting dashboards.
 """
 import json
 import os
@@ -133,8 +134,8 @@ def rule(uid, title, expr, op, threshold, for_, summary, notify="whatsapp", seve
 
 T = f'instance="{TRADING}"'
 H = f'host="{TRADING}"'
-# NSE market hours, Mon-Fri 09:15-15:30 IST = 03:45-10:00 UTC (PromQL time functions are UTC). Holidays not handled.
-MARKET_HOURS = ('on() (day_of_week() >= 1 <= 5) and on() ((hour() * 60 + minute()) >= 225 < 600)')
+# NSE market hours, Mon-Fri 09:10-15:40 IST = 03:40-10:10 UTC (PromQL time functions are UTC). Holidays not handled; a special session (e.g. Muhurat on a Sunday) isn't covered by the alert either.
+MARKET_HOURS = ('on() (day_of_week() >= 1 <= 5) and on() ((hour() * 60 + minute()) >= 220 < 610)')
 trading_rules = [
     rule("trading-vm-down", "Trading VM not reporting",
          f'absent_over_time(up{{job="integrations/node_exporter",{T}}}[5m])', "gt", 0, "1m",
@@ -179,11 +180,14 @@ for group, rules in (("trading-vm", trading_rules), ("heartbeat", heartbeat_rule
 
 # ---- dashboards ----
 # alertmanager / prometheus-overview dashboards are skipped: their metrics are dropped before remote_write.
-for f in ["vm-services-overview", "node-exporter-full", "nginx", "process-exporter", "blackbox"]:
-    d = json.loads((REPO / "grafana" / "dashboards" / f"{f}.json").read_text())
-    inputs = [{"name": i["name"], "type": "datasource", "pluginId": i.get("pluginId", "prometheus"), "value": PROM}
-              for i in d.get("__inputs", []) if i.get("type") == "datasource"]
-    d.pop("id", None)
-    body = {"dashboard": d, "overwrite": True, "inputs": inputs, "folderUid": FOLDER_UID}
-    res = must(api("POST", "/api/dashboards/import", body), f"dashboard {d.get('title')}")
-    print(f"    {STACK}{res.get('importedUrl', '')}")
+if os.environ.get("SKIP_DASHBOARDS") == "1":
+    print("skip dashboards (SKIP_DASHBOARDS=1)")
+else:
+    for f in ["vm-services-overview", "node-exporter-full", "nginx", "process-exporter", "blackbox"]:
+        d = json.loads((REPO / "grafana" / "dashboards" / f"{f}.json").read_text())
+        inputs = [{"name": i["name"], "type": "datasource", "pluginId": i.get("pluginId", "prometheus"), "value": PROM}
+                  for i in d.get("__inputs", []) if i.get("type") == "datasource"]
+        d.pop("id", None)
+        body = {"dashboard": d, "overwrite": True, "inputs": inputs, "folderUid": FOLDER_UID}
+        res = must(api("POST", "/api/dashboards/import", body), f"dashboard {d.get('title')}")
+        print(f"    {STACK}{res.get('importedUrl', '')}")
