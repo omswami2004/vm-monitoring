@@ -136,6 +136,8 @@ T = f'instance="{TRADING}"'
 H = f'host="{TRADING}"'
 # NSE market hours, Mon-Fri 09:10-15:40 IST = 03:40-10:10 UTC (PromQL time functions are UTC). Holidays not handled; a special session (e.g. Muhurat on a Sunday) isn't covered by the alert either.
 MARKET_HOURS = ('on() (day_of_week() >= 1 <= 5) and on() ((hour() * 60 + minute()) >= 220 < 610)')
+# Trading server only starts the bridge at 09:15:00 sharp (it isn't running 09:10–09:15 by design).
+BRIDGE_HOURS = ('on() (day_of_week() >= 1 <= 5) and on() ((hour() * 60 + minute()) >= 226 < 610)')
 trading_rules = [
     rule("trading-vm-down", "Trading VM not reporting",
          f'absent_over_time(up{{job="integrations/node_exporter",{T}}}[5m])', "gt", 0, "1m",
@@ -144,7 +146,7 @@ trading_rules = [
          f'namedprocess_namegroup_num_procs{{groupname="auto-trader",{T}}} and {MARKET_HOURS}', "lt", 1, "1m",
          "auto-trader server process is not running on the trading VM during market hours"),
     rule("trading-kotak-bridge-gone", "kotak-bridge process not running",
-         f'namedprocess_namegroup_num_procs{{groupname="kotak-bridge",{T}}} and {MARKET_HOURS}', "lt", 1, "2m",
+         f'namedprocess_namegroup_num_procs{{groupname="kotak-bridge",{T}}} and {BRIDGE_HOURS}', "lt", 1, "2m",
          "kotak-bridge (node index.js) is not running on the trading VM during market hours"),
     rule("trading-probe-failing", "Trading VM service not answering",
          f'probe_success{{{H}}}', "lt", 1, "2m",
