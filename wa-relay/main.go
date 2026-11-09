@@ -11,6 +11,9 @@
 //	GRAFANA_URL    optional link appended to every message
 //	CLOUD_TOKEN    bearer token for /cloud-alert, the endpoint nginx exposes for Grafana Cloud
 //	               alerting (its webhook payload has the same alerts[] shape). Unset = disabled.
+//	NOTIFY_TOKEN   a second bearer token for /cloud-alert, for senders outside Grafana (GitHub
+//	               Actions): with it the body is {"text": "..."} and the text is sent as it is.
+//	               Its own token, so either can be revoked alone. Unset = disabled.
 package main
 
 import (
@@ -42,12 +45,13 @@ type webhook struct {
 }
 
 var (
-	serverURL  = strings.TrimRight(os.Getenv("WA_SERVER_URL"), "/")
-	apiKey     = os.Getenv("WA_API_KEY")
-	grafanaURL = os.Getenv("GRAFANA_URL")
-	cloudToken = os.Getenv("CLOUD_TOKEN")
-	recipients []string
-	client     = &http.Client{Timeout: 20 * time.Second}
+	serverURL   = strings.TrimRight(os.Getenv("WA_SERVER_URL"), "/")
+	apiKey      = os.Getenv("WA_API_KEY")
+	grafanaURL  = os.Getenv("GRAFANA_URL")
+	cloudToken  = os.Getenv("CLOUD_TOKEN")
+	notifyToken = os.Getenv("NOTIFY_TOKEN")
+	recipients  []string
+	client      = &http.Client{Timeout: 20 * time.Second}
 
 	received, sent, failed atomic.Int64
 )
@@ -147,7 +151,32 @@ func handleAlert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	received.Add(1)
-	msg := format(wh)
+	deliver(w, format(wh))
+}
+
+// handleNotify sends {"text": "..."} as it is: a message someone else already wrote.
+func handleNotify(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var body struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(&body); err != nil || strings.TrimSpace(body.Text) == "" {
+		http.Error(w, "want {\"text\": \"...\"}", http.StatusBadRequest)
+		return
+	}
+	received.Add(1)
+	msg := strings.TrimSpace(body.Text)
+	if len(msg) > 3800 {
+		msg = msg[:3800] + "\n…(truncated)"
+	}
+	deliver(w, msg)
+}
+
+// deliver sends msg to every recipient; 502 if any send failed, so the sender can retry.
+func deliver(w http.ResponseWriter, msg string) {
 	var errs []string
 	for _, to := range recipients {
 		if err := sendText(to, msg); err != nil {
@@ -167,15 +196,26 @@ func handleAlert(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleCloudAlert is /alert behind a bearer token, for webhooks arriving through nginx.
-func handleCloudAlert(w http.ResponseWriter, r *http.Request) {
-	want := "Bearer " + cloudToken
-	got := r.Header.Get("Authorization")
-	if cloudToken == "" || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
-		return
+// bearer reports whether the request carries exactly this token; an unset token matches nothing.
+func bearer(r *http.Request, token string) bool {
+	if token == "" {
+		return false
 	}
-	handleAlert(w, r)
+	got := r.Header.Get("Authorization")
+	return subtle.ConstantTimeCompare([]byte(got), []byte("Bearer "+token)) == 1
+}
+
+// handleCloudAlert is the one path nginx exposes. CLOUD_TOKEN: a Grafana Cloud webhook, as /alert.
+// NOTIFY_TOKEN: a ready-made message (handleNotify).
+func handleCloudAlert(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case bearer(r, cloudToken):
+		handleAlert(w, r)
+	case bearer(r, notifyToken):
+		handleNotify(w, r)
+	default:
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+	}
 }
 
 func handleMetrics(w http.ResponseWriter, _ *http.Request) {
